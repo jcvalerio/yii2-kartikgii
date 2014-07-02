@@ -34,19 +34,18 @@ use kartik\datecontrol\DateControl;
 
 <div class="<?= Inflector::camel2id(StringHelper::basename($generator->modelClass)) ?>-form">
 
-    <?= "<?php " ?>$form = ActiveForm::begin(['type'=>ActiveForm::TYPE_HORIZONTAL]); echo Form::widget([
+    <?= "<?php " ?>
+    $form = ActiveForm::begin(['type'=>ActiveForm::TYPE_VERTICAL]);
+    echo Form::widget([
 
-    'model' => $model,
-    'form' => $form,
-    'columns' => 1,
-    'attributes' => [
-
+        'model' => $model,
+        'form' => $form,
+        'columns' => <?= $generator->columns ?>,
+        'attributes' => [
 <?php foreach ($safeAttributes as $attribute) {
-    echo $generator->generateActiveField($attribute) . " \n\n";
+    echo "            " . $generator->generateActiveField($attribute) . " \n";
 } ?>
-    ]
-
-
+        ]
     ]);
     echo Html::submitButton($model->isNewRecord ? 'Create' : 'Update', ['class' => $model->isNewRecord ? 'btn btn-success' : 'btn btn-primary']);
     ActiveForm::end(); ?>
