@@ -48,6 +48,7 @@ class Generator extends \yii\gii\generators\crud\Generator
     public $indexWidgetType = 'grid';
     public $searchModelClass = '';
     public $columns = 2;
+    public $commonModelNamespace = 'common\models';
 
     /**
      * @inheritdoc
@@ -72,8 +73,8 @@ class Generator extends \yii\gii\generators\crud\Generator
     public function rules()
     {
         return array_merge(parent::rules(), [
-            [['moduleID', 'controllerClass', 'modelClass', 'searchModelClass', 'baseControllerClass'], 'filter', 'filter' => 'trim'],
-            [['modelClass', 'controllerClass', 'baseControllerClass', 'indexWidgetType'], 'required'],
+            [['moduleID', 'controllerClass', 'modelClass', 'searchModelClass', 'baseControllerClass', 'commonModelNamespace'], 'filter', 'filter' => 'trim'],
+            [['modelClass', 'controllerClass', 'baseControllerClass', 'indexWidgetType', 'commonModelNamespace'], 'required'],
             [['searchModelClass'], 'compare', 'compareAttribute' => 'modelClass', 'operator' => '!==', 'message' => 'Search Model Class must not be equal to Model Class.'],
             [['modelClass', 'controllerClass', 'baseControllerClass', 'searchModelClass'], 'match', 'pattern' => '/^[\w\\\\]*$/', 'message' => 'Only word characters and backslashes are allowed.'],
             [['modelClass'], 'validateClass', 'params' => ['extends' => BaseActiveRecord::className()]],
@@ -125,6 +126,8 @@ class Generator extends \yii\gii\generators\crud\Generator
                 You may choose either <code>GridView</code> or <code>ListView</code>',
             'searchModelClass' => 'This is the name of the search model class to be generated. You should provide a fully
                 qualified namespaced class name, e.g., <code>app\models\PostSearch</code>.',
+            'commonModelNamespace' => 'This is the namespace where the common model class are located. This is used to
+                generated qualified namespaced class name, e.g., <code>common\models\UserAccount::getKeyValuePairs()</code>.',
         ]);
     }
 
@@ -255,6 +258,10 @@ class Generator extends \yii\gii\generators\crud\Generator
             }
         }
         $column = $tableSchema->columns[$attribute];
+        $foreignKey = $this->getForeignKey($tableSchema, $column);
+        if (!empty($foreignKey)) {
+            return $this->generateForeignKeyField($column, $foreignKey, $attribute);
+        } else
         if ($column->phpType === 'boolean') {
             //return "\$form->field(\$model, '$attribute')->checkbox()";
             return "'$attribute' => ['type' => Form::INPUT_CHECKBOX, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
@@ -570,5 +577,59 @@ class Generator extends \yii\gii\generators\crud\Generator
 
             return $model->attributes();
         }
+    }
+
+    /**
+     * If the especified column is a foreign key return the referencial information.
+     * 
+     * @param \yii\db\TableSchema $tableSchema represents the metadata of a database table.
+     * @return array foreign key information related with especified column.
+     * Each array element is of the following structure:
+     *
+     * ~~~
+     * [
+     *  'ForeignTableName',
+     *  'fk1' => 'pk1',  // pk1 is in foreign table
+     *  'fk2' => 'pk2',  // if composite foreign key
+     * ]
+     * ~~~
+     */
+    public function getForeignKey($tableSchema, $column)
+    {
+        $isForeignKey = false;
+        $foreignKey = [];
+        foreach ($tableSchema->foreignKeys as $refs) {
+            $foreignKey = $refs;
+            $refTable = $refs[0];
+            unset($refs[0]);
+            $fks = array_keys($refs);
+            if(in_array($column->name, $fks)) {
+                $isForeignKey = true;
+                break;
+            }
+        }
+        if(!$isForeignKey) {
+            $foreignKey = [];
+        }
+        return $foreignKey;
+    }
+
+    /**
+     * Generates code for active field
+     * 
+     * @param yii\db\ColumnSchema $column class describes the metadata of a column in a database table.
+     * @param array $foreignKey array foreign key information related with especified column.
+     * @param string $attribute column name
+     * @return string that represents the dropdown active field.
+     */
+    public function generateForeignKeyField($column, $foreignKey, $attribute)
+    {
+        $prompt = '';
+        if ($column->allowNull && $column->defaultValue == NULL) {
+            $prompt = "'prompt' => 'None', ";
+        }
+        return "'$attribute' => ['type' => Form::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\". 
+            $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" . 
+            $prompt . "'placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
     }
 }
