@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @link http://www.yiiframework.com/
  * @copyright Copyright (c) 2008 Yii Software LLC
@@ -14,6 +15,7 @@ use yii\db\Schema;
 use yii\gii\CodeFile;
 use yii\helpers\Inflector;
 use yii\web\Controller;
+use apptitude\helpers\UtilHelper;
 
 /**
  * Generates CRUD
@@ -40,7 +42,7 @@ class Generator extends \yii\gii\generators\crud\Generator
      * @const TEXT_FIELD_MAX_SIZE Column max length to use a text control.
      */
     const TEXT_FIELD_MAX_SIZE = 255;
-    
+
     public $modelClass;
     public $moduleID;
     public $controllerClass;
@@ -49,6 +51,13 @@ class Generator extends \yii\gii\generators\crud\Generator
     public $searchModelClass = '';
     public $columns = 2;
     public $commonModelNamespace = 'common\models';
+    public $createTime = array('AddedDate', 'create_time', 'createtime', 'created_at', 'createdat', 'created_time', 'createdtime');
+    public $updateTime = array('EditedDate', 'changed', 'changed_at', 'updatetime', 'modified_at', 'updated_at', 'update_time', 'timestamp', 'updatedat');
+    public $addedBy = array('AddedById');
+    public $editedBy = array('EditedById');
+    public $timestampAuditTrailFields = [];
+    public $userAuditTrailFields = [];
+    public $auditTrailFields = [];
 
     /**
      * @inheritdoc
@@ -65,6 +74,17 @@ class Generator extends \yii\gii\generators\crud\Generator
     {
         return 'This generator generates a controller and views that implement CRUD (Create, Read, Update, Delete)
             operations for the specified data model.';
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        $this->timestampAuditTrailFields = array_merge($this->createTime, $this->updateTime);
+        $this->userAuditTrailFields = array_merge($this->addedBy, $this->editedBy);
+        $this->auditTrailFields = array_merge($this->timestampAuditTrailFields, $this->userAuditTrailFields);
+        parent::init();
     }
 
     /**
@@ -221,7 +241,7 @@ class Generator extends \yii\gii\generators\crud\Generator
     {
         $module = empty($this->moduleID) ? Yii::$app : Yii::$app->getModule($this->moduleID);
 
-        return $module->getViewPath() . '/' . $this->getControllerID() ;
+        return $module->getViewPath() . '/' . $this->getControllerID();
     }
 
     public function getNameAttribute()
@@ -240,41 +260,91 @@ class Generator extends \yii\gii\generators\crud\Generator
 
     /**
      * Generates code for active field
+     * @param \yii\db\ColumnSchema $column describes the metadata of a column in a database table.
+     * @return string
+     */
+    private function isValidField($column)
+    {
+        $isValidField = true;
+        if ($column->isPrimaryKey) {
+            $isValidField = false;
+        } else {
+            $isAuditTrailField = in_array($column->name, $this->auditTrailFields);
+            if ($isAuditTrailField) {
+                $isValidField = false;
+            }
+        }
+        return $isValidField;
+    }
+
+    /**
+     * Generates code for active field
      * @param string $attribute
      * @return string
      */
     public function generateActiveField($attribute)
     {
-        $model = new $this->modelClass();
-        $attributeLabels = $model->attributeLabels();
         $tableSchema = $this->getTableSchema();
-        if ($tableSchema === false || !isset($tableSchema->columns[$attribute])) {
+        $column = $tableSchema->columns[$attribute];
+        return $this->generateActiveFieldControl($tableSchema, $column);
+    }
+
+    /**
+     * Generates code for valid active fields
+     * @return string representation of all valid active fields
+     */
+    public function generateActiveFields()
+    {
+        $activeFields = "";
+        $indentation = 4;
+        $tableSchema = $this->getTableSchema();
+        foreach ($tableSchema->columns as $column) {
+            if ($this->isValidField($column)) {
+                $activeFields .= UtilHelper::indentCode($indentation) . $this->generateActiveFieldControl($tableSchema, $column) . "\n";
+            }
+        }
+        return $activeFields;
+    }
+
+    /**
+     * Generates code for active field
+     * @param \yii\db\TableSchema $tableSchema represents the metadata of a database table.
+     * @param \yii\db\ColumnSchema $column describes the metadata of a column in a database table.
+     * @return string
+     */
+    public function generateActiveFieldControl($tableSchema, $column)
+    {
+        $attribute = $column->name;
+        $model = new $this->modelClass();
+        if ($tableSchema === false || !isset($column)) {
             if (preg_match('/^(password|pass|passwd|passcode)$/i', $attribute)) {
-                return "'$attribute' => ['type'=> TabularForm::INPUT_PASSWORD,'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
+                return "'$attribute' => ['type'=> TabularForm::INPUT_PASSWORD,'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
                 //return "\$form->field(\$model, '$attribute')->passwordInput()";
             } else {
-                return "'$attribute' => ['type'=> TabularForm::INPUT_TEXT, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
+                return "'$attribute' => ['type'=> TabularForm::INPUT_TEXT, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
                 //return "\$form->field(\$model, '$attribute')";
             }
         }
-        $column = $tableSchema->columns[$attribute];
+        $isAuditTrailField = in_array($column->name, $this->auditTrailFields);
+        if ($isAuditTrailField) {
+            return '';
+        }
         $foreignKey = $this->getForeignKey($tableSchema, $column);
         if (!empty($foreignKey)) {
             return $this->generateForeignKeyField($column, $foreignKey, $attribute);
-        } else
-        if ($column->phpType === 'boolean') {
+        } elseif ($column->phpType === 'boolean') {
             //return "\$form->field(\$model, '$attribute')->checkbox()";
-            return "'$attribute' => ['type' => Form::INPUT_CHECKBOX, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
+            return "'$attribute' => ['type' => Form::INPUT_CHECKBOX, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
         } elseif ($column->type === 'text') {
             //return "\$form->field(\$model, '$attribute')->textarea(['rows' => 6])";
-            return "'$attribute' => ['type' => Form::INPUT_TEXTAREA, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."')),'rows'=> 6]],";
-        } elseif($column->type === 'date'){
+            return "'$attribute' => ['type' => Form::INPUT_TEXTAREA, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "')),'rows'=> 6]],";
+        } elseif ($column->type === 'date') {
             return "'$attribute' => ['type' => Form::INPUT_WIDGET, 'widgetClass' => DateControl::classname(),'options' => ['type' => DateControl::FORMAT_DATE]],";
-        } elseif($column->type === 'time'){
+        } elseif ($column->type === 'time') {
             return "'$attribute' => ['type' => Form::INPUT_WIDGET, 'widgetClass' => DateControl::classname(),'options' => ['type' => DateControl::FORMAT_TIME]],";
-        } elseif($column->type === 'datetime' || $column->type === 'timestamp'){
+        } elseif ($column->type === 'datetime' || $column->type === 'timestamp') {
             return "'$attribute' => ['type' => Form::INPUT_WIDGET, 'widgetClass' => DateControl::classname(),'options' => ['type' => DateControl::FORMAT_DATETIME]],";
-        }else{
+        } else {
             if (preg_match('/^(password|pass|passwd|passcode)$/i', $column->name)) {
                 $input = 'INPUT_PASSWORD';
             } else {
@@ -282,16 +352,16 @@ class Generator extends \yii\gii\generators\crud\Generator
             }
             if ($column->phpType !== 'string' || $column->size === null) {
                 //return "\$form->field(\$model, '$attribute')->$input()";
-                return "'$attribute' => ['type' => Form::".$input.", 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
+                return "'$attribute' => ['type' => Form::" . $input . ", 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
             } elseif ($column->size > self::TEXT_FIELD_MAX_SIZE) {
-                return "'$attribute' => ['type' => Form::INPUT_TEXTAREA, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."')),'rows' => 6]],";
+                return "'$attribute' => ['type' => Form::INPUT_TEXTAREA, 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "')),'rows' => 6]],";
             } else {
                 if (($size = $maxLength = $column->size) > self::TEXT_FIELD_DEFAULT_SIZE) {
                     $size = self::TEXT_FIELD_DEFAULT_SIZE;
                 }
 
                 //return "\$form->field(\$model, '$attribute')->$input(['maxlength' => $column->size])";
-                return "'$attribute' => ['type' => Form::".$input.", 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."')), 'maxlength' => ".$column->size."]],";
+                return "'$attribute' => ['type' => Form::" . $input . ", 'options' => ['placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "')), 'maxlength' => " . $column->size . "]],";
             }
         }
     }
@@ -603,12 +673,12 @@ class Generator extends \yii\gii\generators\crud\Generator
             $refTable = $refs[0];
             unset($refs[0]);
             $fks = array_keys($refs);
-            if(in_array($column->name, $fks)) {
+            if (in_array($column->name, $fks)) {
                 $isForeignKey = true;
                 break;
             }
         }
-        if(!$isForeignKey) {
+        if (!$isForeignKey) {
             $foreignKey = [];
         }
         return $foreignKey;
@@ -628,8 +698,20 @@ class Generator extends \yii\gii\generators\crud\Generator
         if ($column->allowNull && $column->defaultValue == NULL) {
             $prompt = "'prompt' => 'None', ";
         }
-        return "'$attribute' => ['type' => Form::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\". 
-            $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" . 
-            $prompt . "'placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" .$attribute."'))]],";
+        return "'$attribute' => ['type' => Form::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\" .
+            $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" .
+            $prompt . "'placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
     }
+    
+    public function generateForeignKeyColumn($column, $foreignKey, $attribute)
+    {
+        $prompt = '';
+        if ($column->allowNull && $column->defaultValue == NULL) {
+            $prompt = "'prompt' => 'None', ";
+        }
+        return "[ 'attribute' => '$attribute', 'type' => DetailView::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\" .
+            $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" .
+            $prompt . "'placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
+    }
+
 }

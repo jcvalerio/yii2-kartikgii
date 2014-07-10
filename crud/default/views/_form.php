@@ -42,9 +42,7 @@ use kartik\datecontrol\DateControl;
         'form' => $form,
         'columns' => <?= $generator->columns ?>,
         'attributes' => [
-<?php foreach ($safeAttributes as $attribute) {
-    echo "            " . $generator->generateActiveField($attribute) . " \n";
-} ?>
+<?= $generator->generateActiveFields(); ?>
         ]
     ]);
     echo Html::submitButton($model->isNewRecord ? 'Create' : 'Update', ['class' => $model->isNewRecord ? 'btn btn-success' : 'btn btn-primary']);
