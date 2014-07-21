@@ -36,6 +36,9 @@ use kartik\datecontrol\DateControl;
 
     <?= "<?php " ?>
     $form = ActiveForm::begin(['type'=>ActiveForm::TYPE_VERTICAL]);
+    
+    echo $form->errorSummary($model);
+    
     echo Form::widget([
 
         'model' => $model,

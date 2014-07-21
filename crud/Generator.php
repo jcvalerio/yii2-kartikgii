@@ -59,6 +59,7 @@ class Generator extends \yii\gii\generators\crud\Generator
     public $timestampAuditTrailFields = [];
     public $userAuditTrailFields = [];
     public $auditTrailFields = [];
+    public $generateAllViews = false;
 
     /**
      * @inheritdoc
@@ -106,7 +107,7 @@ class Generator extends \yii\gii\generators\crud\Generator
             [['indexWidgetType'], 'in', 'range' => ['grid', 'list']],
             [['modelClass'], 'validateModelClass'],
             [['moduleID'], 'validateModuleID'],
-            [['enableI18N'], 'boolean'],
+            [['enableI18N', 'generateAllViews'], 'boolean'],
             [['columns'], 'integer'],
             [['messageCategory'], 'validateMessageCategory', 'skipOnEmpty' => false],
         ]);
@@ -125,7 +126,8 @@ class Generator extends \yii\gii\generators\crud\Generator
             'indexWidgetType' => 'Widget Used in Index Page',
             'searchModelClass' => 'Search Model Class',
             'columns' => 'Form Columns',
-            'customBaseControllerClass' => 'Base Controller Class Custom'
+            'customBaseControllerClass' => 'Base Controller Class Custom',
+            'generateAllViews' => 'Generate all views?'
         ]);
     }
 
@@ -152,6 +154,7 @@ class Generator extends \yii\gii\generators\crud\Generator
                 generated qualified namespaced class name, e.g., <code>common\models\UserAccount::getKeyValuePairs()</code>.',
             'customBaseControllerClass' => 'This is the class that the new CRUD controller class will extend from.
                 You should provide a fully qualified class name, e.g., <code>yii\web\Controller</code>.',
+            'generateAllViews' => 'Generates all models using default values <code>commom\models</code>'
         ]);
     }
 
@@ -205,30 +208,115 @@ class Generator extends \yii\gii\generators\crud\Generator
      */
     public function generate()
     {
-        $baseControllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->customBaseControllerClass, '\\')) . '.php');
-        $controllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->controllerClass, '\\')) . '.php');
+        if($this->generateAllViews) {
+            $files = $this->generateAll();
+        } else {
+            $baseControllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->customBaseControllerClass, '\\')) . '.php');
+            $controllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->controllerClass, '\\')) . '.php');
 
-        $files = [
-            new CodeFile($baseControllerFile, $this->render('base/baseController.php')),
-            new CodeFile($controllerFile, $this->render('controller.php'))
+            $files = [
+                new CodeFile($baseControllerFile, $this->render('base/baseController.php')),
+                new CodeFile($controllerFile, $this->render('controller.php'))
+            ];
+
+            if (!empty($this->searchModelClass)) {
+                $searchModel = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->searchModelClass, '\\') . '.php'));
+                $files[] = new CodeFile($searchModel, $this->render('search.php'));
+            }
+
+            $viewPath = $this->getViewPath();
+            $templatePath = $this->getTemplatePath() . '/views';
+            foreach (scandir($templatePath) as $file) {
+                if (empty($this->searchModelClass) && $file === '_search.php') {
+                    continue;
+                }
+                if (is_file($templatePath . '/' . $file) && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+                    $files[] = new CodeFile("$viewPath/$file", $this->render("views/$file"));
+                }
+            }
+        }
+
+        return $files;
+    }
+    
+    private function generateAll()
+    {
+        $models = [
+            'ActionType',
+            'Address',
+            'AuditTrail',
+            'Category',
+            'Company',
+            'Competition',
+            'CompetitionOutfitSize',
+            'CompetitionPacket',
+            'CompetitionPolicy',
+            'CompetitionStatus',
+            'CompetitionType',
+            'Corporation',
+            'Country',
+            'CountryState',
+            'Currency',
+            'Distance',
+            'Document',
+            'ErrorLog',
+            'Friend',
+            'FriendshipRequest',
+            'FriendshipStatus',
+            'IdentificationType',
+            'Inscription',
+            'InscriptionCompetitionPolicy',
+            'Language',
+            'LoginType',
+            //'OAuth_AccessToken',
+            //'OAuth_Client',
+            //'OAuth_RefreshToken',
+            //'OAuth_Scope',
+            'OrderAddress',
+            'OrderHeader',
+            'OutfitSize',
+            'Person',
+            'PersonOutfitSize',
+            'PreRaceSchedule',
+            'Race',
+            'RaceCategory',
+            'RacePacket',
+            'Setting',
+            'SocialNetwork',
+            'Team',
+            'TeamMember',
+            'UnitsOfMeasure',
+            'UserAccount',
         ];
+        foreach ($models as $tableName) {
+            $this->modelClass = 'common\\models\\' . $tableName;
+            $this->searchModelClass = 'common\\models\\' . $tableName . 'Search';
+            $this->controllerClass = 'backend\\controllers\\' . $tableName . 'Controller';
+            $this->customBaseControllerClass = 'backend\\controllers\\base\\' . $tableName . 'BaseController';
+            
+            
+            $baseControllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->customBaseControllerClass, '\\')) . '.php');
+            $controllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->controllerClass, '\\')) . '.php');
 
-        if (!empty($this->searchModelClass)) {
-            $searchModel = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->searchModelClass, '\\') . '.php'));
-            $files[] = new CodeFile($searchModel, $this->render('search.php'));
-        }
+            $files[] = new CodeFile($baseControllerFile, $this->render('base/baseController.php'));
+            $files[] = new CodeFile($controllerFile, $this->render('controller.php'));
 
-        $viewPath = $this->getViewPath();
-        $templatePath = $this->getTemplatePath() . '/views';
-        foreach (scandir($templatePath) as $file) {
-            if (empty($this->searchModelClass) && $file === '_search.php') {
-                continue;
+            if (!empty($this->searchModelClass)) {
+                $searchModel = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->searchModelClass, '\\') . '.php'));
+                $files[] = new CodeFile($searchModel, $this->render('search.php'));
             }
-            if (is_file($templatePath . '/' . $file) && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
-                $files[] = new CodeFile("$viewPath/$file", $this->render("views/$file"));
+
+            $viewPath = $this->getViewPath();
+            $templatePath = $this->getTemplatePath() . '/views';
+            foreach (scandir($templatePath) as $file) {
+                if (empty($this->searchModelClass) && $file === '_search.php') {
+                    continue;
+                }
+                if (is_file($templatePath . '/' . $file) && pathinfo($file, PATHINFO_EXTENSION) === 'php') {
+                    $files[] = new CodeFile("$viewPath/$file", $this->render("views/$file"));
+                }
             }
         }
-
         return $files;
     }
 
@@ -272,7 +360,7 @@ class Generator extends \yii\gii\generators\crud\Generator
      * @param \yii\db\ColumnSchema $column describes the metadata of a column in a database table.
      * @return string
      */
-    private function isValidField($column)
+    public function isValidField($column)
     {
         $isValidField = true;
         if ($column->isPrimaryKey) {
@@ -721,6 +809,35 @@ class Generator extends \yii\gii\generators\crud\Generator
         return "[ 'attribute' => '$attribute', 'type' => DetailView::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\" .
             $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" .
             $prompt . "'placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
+    }
+
+    /**
+     * Generate a relation name for the specified table and a base name.
+     * @param array $relations the relations being generated currently.
+     * @param string $className the class name that will contain the relation declarations
+     * @param \yii\db\TableSchema $table the table schema
+     * @param string $key a base name that the relation name may be generated from
+     * @param boolean $multiple whether this is a has-many relation
+     * @return string the relation name
+     */
+    public function generateRelationName($relations, $className, $table, $key, $multiple)
+    {
+        if (strcasecmp(substr($key, -2), 'id') === 0 && strcasecmp($key, 'id')) {
+            $key = rtrim(substr($key, 0, -2), '_');
+        }
+        if ($multiple) {
+            $key = Inflector::pluralize($key);
+        }
+        $name = $rawName = Inflector::id2camel($key, '_');
+        $i = 0;
+        while (isset($table->columns[lcfirst($name)])) {
+            $name = $rawName . ($i++);
+        }
+        while (isset($relations[$className][lcfirst($name)])) {
+            $name = $rawName . ($i++);
+        }
+
+        return $name;
     }
 
 }

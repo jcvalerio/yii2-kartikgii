@@ -5,6 +5,7 @@
  * @var yii\gii\generators\crud\Generator $generator
  */
 
+echo $form->field($generator, 'generateAllViews')->checkbox();
 echo $form->field($generator, 'modelClass');
 echo $form->field($generator, 'searchModelClass');
 echo $form->field($generator, 'controllerClass');

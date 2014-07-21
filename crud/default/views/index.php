@@ -60,16 +60,29 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
     }
 } else {
     foreach ($tableSchema->columns as $column) {
-        $format = $generator->generateColumnFormat($column);
-        if($column->type === 'date'){
-            $columnDisplay = "            ['attribute'=>'$column->name','format'=>['date',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['date'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['date'] : 'd-m-Y']],";
+        if(!$generator->isValidField($column)) {
+            continue;
+        }
+        $foreignKey = $generator->getForeignKey($tableSchema, $column);
+        if (!empty($foreignKey)) {
+            $relations = [];
+            $className = Inflector::camel2words(StringHelper::basename($generator->modelClass));
+            unset($foreignKey[0]);
+            $fks = array_keys($foreignKey);
+            $relationName = $generator->generateRelationName($relations, $className, $tableSchema, $fks[0], false);
+            $columnDisplay = "            '" . lcfirst($relationName) . ".Name',";
+        } else {
+            $format = $generator->generateColumnFormat($column);
+            if($column->type === 'date'){
+                $columnDisplay = "            ['attribute'=>'$column->name','format'=>['date',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['date'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['date'] : 'd-m-Y']],";
 
-        }elseif($column->type === 'time'){
-            $columnDisplay = "            ['attribute'=>'$column->name','format'=>['time',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['time'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['time'] : 'H:i:s A']],";
-        }elseif($column->type === 'datetime' || $column->type === 'timestamp'){
-            $columnDisplay = "            ['attribute'=>'$column->name','format'=>['datetime',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['datetime'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['datetime'] : 'd-m-Y H:i:s A']],";
-        }else{
-            $columnDisplay = "            '" . $column->name . ($format === 'text' ? "" : ":" . $format) . "',";
+            }elseif($column->type === 'time'){
+                $columnDisplay = "            ['attribute'=>'$column->name','format'=>['time',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['time'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['time'] : 'H:i:s A']],";
+            }elseif($column->type === 'datetime' || $column->type === 'timestamp'){
+                $columnDisplay = "            ['attribute'=>'$column->name','format'=>['datetime',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['datetime'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['datetime'] : 'd-m-Y H:i:s A']],";
+            }else{
+                $columnDisplay = "            '" . $column->name . ($format === 'text' ? "" : ":" . $format) . "',";
+            }
         }
         if (++$count < 6) {
             echo $columnDisplay ."\n";
