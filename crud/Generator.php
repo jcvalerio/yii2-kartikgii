@@ -47,6 +47,7 @@ class Generator extends \yii\gii\generators\crud\Generator
     public $moduleID;
     public $controllerClass;
     public $baseControllerClass = 'yii\web\Controller';
+    public $customBaseControllerClass;
     public $indexWidgetType = 'grid';
     public $searchModelClass = '';
     public $columns = 2;
@@ -93,10 +94,10 @@ class Generator extends \yii\gii\generators\crud\Generator
     public function rules()
     {
         return array_merge(parent::rules(), [
-            [['moduleID', 'controllerClass', 'modelClass', 'searchModelClass', 'baseControllerClass', 'commonModelNamespace'], 'filter', 'filter' => 'trim'],
-            [['modelClass', 'controllerClass', 'baseControllerClass', 'indexWidgetType', 'commonModelNamespace'], 'required'],
+            [['moduleID', 'controllerClass', 'modelClass', 'searchModelClass', 'baseControllerClass', 'commonModelNamespace', 'customBaseControllerClass'], 'filter', 'filter' => 'trim'],
+            [['modelClass', 'controllerClass', 'baseControllerClass', 'indexWidgetType', 'commonModelNamespace', 'customBaseControllerClass'], 'required'],
             [['searchModelClass'], 'compare', 'compareAttribute' => 'modelClass', 'operator' => '!==', 'message' => 'Search Model Class must not be equal to Model Class.'],
-            [['modelClass', 'controllerClass', 'baseControllerClass', 'searchModelClass'], 'match', 'pattern' => '/^[\w\\\\]*$/', 'message' => 'Only word characters and backslashes are allowed.'],
+            [['modelClass', 'controllerClass', 'baseControllerClass', 'searchModelClass', 'customBaseControllerClass'], 'match', 'pattern' => '/^[\w\\\\]*$/', 'message' => 'Only word characters and backslashes are allowed.'],
             [['modelClass'], 'validateClass', 'params' => ['extends' => BaseActiveRecord::className()]],
             [['baseControllerClass'], 'validateClass', 'params' => ['extends' => Controller::className()]],
             [['controllerClass'], 'match', 'pattern' => '/Controller$/', 'message' => 'Controller class name must be suffixed with "Controller".'],
@@ -123,7 +124,8 @@ class Generator extends \yii\gii\generators\crud\Generator
             'baseControllerClass' => 'Base Controller Class',
             'indexWidgetType' => 'Widget Used in Index Page',
             'searchModelClass' => 'Search Model Class',
-            'columns' => 'Form Columns'
+            'columns' => 'Form Columns',
+            'customBaseControllerClass' => 'Base Controller Class Custom'
         ]);
     }
 
@@ -148,6 +150,8 @@ class Generator extends \yii\gii\generators\crud\Generator
                 qualified namespaced class name, e.g., <code>app\models\PostSearch</code>.',
             'commonModelNamespace' => 'This is the namespace where the common model class are located. This is used to
                 generated qualified namespaced class name, e.g., <code>common\models\UserAccount::getKeyValuePairs()</code>.',
+            'customBaseControllerClass' => 'This is the class that the new CRUD controller class will extend from.
+                You should provide a fully qualified class name, e.g., <code>yii\web\Controller</code>.',
         ]);
     }
 
@@ -156,7 +160,10 @@ class Generator extends \yii\gii\generators\crud\Generator
      */
     public function requiredTemplates()
     {
-        return ['controller.php'];
+        return [
+            'controller.php',
+            'base/baseController.php'
+            ];
     }
 
     /**
@@ -198,10 +205,12 @@ class Generator extends \yii\gii\generators\crud\Generator
      */
     public function generate()
     {
+        $baseControllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->customBaseControllerClass, '\\')) . '.php');
         $controllerFile = Yii::getAlias('@' . str_replace('\\', '/', ltrim($this->controllerClass, '\\')) . '.php');
 
         $files = [
-            new CodeFile($controllerFile, $this->render('controller.php')),
+            new CodeFile($baseControllerFile, $this->render('base/baseController.php')),
+            new CodeFile($controllerFile, $this->render('controller.php'))
         ];
 
         if (!empty($this->searchModelClass)) {
