@@ -6,6 +6,7 @@
  */
 
 echo $form->field($generator, 'generateAllViews')->checkbox();
+echo $form->field($generator, 'generateController')->checkbox();
 echo $form->field($generator, 'modelClass');
 echo $form->field($generator, 'searchModelClass');
 echo $form->field($generator, 'controllerClass');
