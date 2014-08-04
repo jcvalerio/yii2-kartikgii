@@ -763,7 +763,11 @@ class Generator extends \yii\gii\generators\crud\Generator
         if ($column->allowNull && $column->defaultValue == NULL) {
             $prompt = "'prompt' => 'None', ";
         }
-        return "[ 'attribute' => '$attribute', 'type' => DetailView::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\" .
+        $displayOnly = '';
+        if(in_array($column->name, $this->auditTrailFields)) {
+            $displayOnly = "'displayOnly' => true,";
+        }
+        return "[ 'attribute' => '$attribute'," . $displayOnly ." 'type' => DetailView::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\" .
             $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" .
             $prompt . "'placeholder' => Yii::t('app', 'Enter {0}...', Yii::t('app', '" . $attribute . "'))]],";
     }

@@ -49,7 +49,13 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
     }
 } else {
     foreach ($generator->getTableSchema()->columns as $column) {
-
+        if($column->isPrimaryKey) {
+            continue;
+        }
+        $displayOnly = '';
+        if(in_array($column->name, $generator->auditTrailFields)) {
+            $displayOnly = "'displayOnly' => true,";
+        }
         $foreignKey = $generator->getForeignKey($tableSchema, $column);
         if (!empty($foreignKey)) {
             echo "            " . $generator->generateForeignKeyColumn($column, $foreignKey, $column->name) . "\n";
@@ -59,49 +65,53 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
 
             if($column->type === 'date'){
                 echo "            [
-                    'attribute'=>'$column->name',
-                    'format'=>['date',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['date'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['date'] : 'd-m-Y'],
-                    'type'=>DetailView::INPUT_WIDGET,
-                    'widgetOptions'=> [
-                        'class'=>DateControl::classname(),
-                        'type'=>DateControl::FORMAT_DATE
+                    'attribute' => '$column->name',
+                    $displayOnly
+                    'format' => ['date',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['date'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['date'] : 'd-m-Y'],
+                    'type' => DetailView::INPUT_WIDGET,
+                    'widgetOptions' => [
+                        'class' => DateControl::classname(),
+                        'type' => DateControl::FORMAT_DATE
                     ]
                 ],\n";
 
             }elseif($column->type === 'time'){
                 echo "            [
-                    'attribute'=>'$column->name',
-                    'format'=>['time',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['time'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['time'] : 'H:i:s A'],
-                    'type'=>DetailView::INPUT_WIDGET,
-                    'widgetOptions'=> [
-                        'class'=>DateControl::classname(),
-                        'type'=>DateControl::FORMAT_TIME
+                    'attribute' => '$column->name',
+                    $displayOnly
+                    'format' => ['time',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['time'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['time'] : 'H:i:s A'],
+                    'type' => DetailView::INPUT_WIDGET,
+                    'widgetOptions' => [
+                        'class' => DateControl::classname(),
+                        'type' => DateControl::FORMAT_TIME
                     ]
                 ],\n";
 
             }elseif($column->type === 'datetime' || $column->type === 'timestamp'){
                 echo "            [
-                    'attribute'=>'$column->name',
-                    'format'=>['datetime',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['datetime'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['datetime'] : 'd-m-Y H:i:s A'],
-                    'type'=>DetailView::INPUT_WIDGET,
-                    'widgetOptions'=> [
-                        'class'=>DateControl::classname(),
-                        'type'=>DateControl::FORMAT_DATETIME
+                    'attribute' => '$column->name',
+                    $displayOnly
+                    'format' => ['datetime',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['datetime'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['datetime'] : 'd-m-Y H:i:s A'],
+                    'type' => DetailView::INPUT_WIDGET,
+                    'widgetOptions' => [
+                        'class' => DateControl::classname(),
+                        'type' => DateControl::FORMAT_DATETIME
                     ]
                 ],\n";
 
             }elseif($column->phpType === 'boolean'){
                 echo "            [
-                    'attribute'=>'$column->name',
-                    'format'=>'raw',
-                    'value'=>\$model->$column->name ? 
+                    'attribute' => '$column->name',
+                    $displayOnly
+                    'format' => 'raw',
+                    'value' => \$model->$column->name ? 
                         '<span class=\"label label-success\">' . Yii::t('app', 'Yes') . '</span>' : 
                         '<span class=\"label label-danger\">' . Yii::t('app', 'No') . '</span>',
                     'type'=>DetailView::INPUT_SWITCH
                 ],\n";
 
             } else{
-                echo "            '" . $column->name . ($format === 'text' ? "" : ":" . $format) . "',\n";
+                echo "            ['attribute' => '" . $column->name ."'". ($format === 'text' ? "" : ", 'format' => '" . $format . "'") . ", " . $displayOnly . "],\n";
             }
         }
     }
