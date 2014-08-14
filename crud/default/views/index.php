@@ -70,7 +70,7 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
             unset($foreignKey[0]);
             $fks = array_keys($foreignKey);
             $relationName = $generator->generateRelationName($relations, $className, $tableSchema, $fks[0], false);
-            $columnDisplay = "            '" . lcfirst($relationName) . ".Name',";
+            $columnDisplay = "            ['attribute' => '" . lcfirst($relationName) . ".Name', 'label' => Yii::t('app', '" . $column->name . "') ],";
         } else {
             $format = $generator->generateColumnFormat($column);
             if($column->type === 'date'){
