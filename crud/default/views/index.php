@@ -17,7 +17,10 @@ echo "<?php\n";
 
 ?>
 
+
+use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
+use yii\helpers\Url;
 use <?= $generator->indexWidgetType === 'grid' ? "kartik\\grid\\GridView" : "yii\\widgets\\ListView" ?>;
 use yii\widgets\Pjax;
 
@@ -66,20 +69,42 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
         $foreignKey = $generator->getForeignKey($tableSchema, $column);
         if (!empty($foreignKey)) {
             $relations = [];
-            $className = Inflector::camel2words(StringHelper::basename($generator->modelClass));
+            $modelClass = StringHelper::basename($generator->modelClass);
+            $className = Inflector::camel2words($modelClass);
+            $relatedClassName = $foreignKey[0];
             unset($foreignKey[0]);
             $fks = array_keys($foreignKey);
             $relationName = $generator->generateRelationName($relations, $className, $tableSchema, $fks[0], false);
-            $columnDisplay = "            ['attribute' => '" . lcfirst($relationName) . ".Name', 'label' => Yii::t('app', '" . $column->name . "') ],";
+            //$columnDisplay = "            ['attribute' => '" . lcfirst($relationName) . ".Name', 'label' => Yii::t('app', '" . $column->name . "') ],";
+            $columnDisplay = "            \\appttitude\\helpers\\views\\ViewHelper::generateSelect2Column('$column->name', '" . lcfirst($relationName) . "', '$relatedClassName'),";
+            /*
+            $columnDisplay = "
+            [
+                'attribute' => '$column->name',
+                'value' => function (\$model, \$key, \$index, \$widget) {
+                    return !isset(\$model->" . lcfirst($relationName) . ") ? '' : Html::a(\$model->" . lcfirst($relationName) . "->Name, Url::toRoute(['" . lcfirst($relatedClassName) . "/update/', 'id' => \$model->" . $column->name . "]), [
+                            'title' => Yii::t('app', 'Navigate to {0}...', Yii::t('app', '$relatedClassName')),
+                    ]);
+                },
+                'filterType' => GridView::FILTER_SELECT2,
+                'filter' => ArrayHelper::map(\common\models\\$relatedClassName::find()->orderBy('Name')->asArray()->all(), '" . $relatedClassName . "Id', 'Name'),
+                'filterWidgetOptions' => [
+                    'pluginOptions' => ['allowClear' => true],
+                ],
+                'filterInputOptions' => ['placeholder' => Yii::t('app', 'Any {0}...', Yii::t('app', '$relatedClassName'))],
+                'format' => 'raw'
+            ],";
+             * 
+             */
         } else {
             $format = $generator->generateColumnFormat($column);
             if($column->type === 'date'){
-                $columnDisplay = "            ['attribute'=>'$column->name','format'=>['date',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['date'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['date'] : 'd-m-Y']],";
+                $columnDisplay = "            ['attribute' => '$column->name','format' => ['date', (isset(Yii::\$app->modules['datecontrol']['displaySettings']['date'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['date'] : 'd-m-Y']],";
 
             }elseif($column->type === 'time'){
-                $columnDisplay = "            ['attribute'=>'$column->name','format'=>['time',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['time'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['time'] : 'H:i:s A']],";
+                $columnDisplay = "            ['attribute' => '$column->name','format' => ['time', (isset(Yii::\$app->modules['datecontrol']['displaySettings']['time'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['time'] : 'H:i:s A']],";
             }elseif($column->type === 'datetime' || $column->type === 'timestamp'){
-                $columnDisplay = "            ['attribute'=>'$column->name','format'=>['datetime',(isset(Yii::\$app->modules['datecontrol']['displaySettings']['datetime'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['datetime'] : 'd-m-Y H:i:s A']],";
+                $columnDisplay = "            ['attribute' => '$column->name','format' => ['datetime', (isset(Yii::\$app->modules['datecontrol']['displaySettings']['datetime'])) ? Yii::\$app->modules['datecontrol']['displaySettings']['datetime'] : 'd-m-Y H:i:s A']],";
             }else{
                 $columnDisplay = "            '" . $column->name . ($format === 'text' ? "" : ":" . $format) . "',";
             }
@@ -87,7 +112,7 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
         if (++$count < 6) {
             echo $columnDisplay ."\n";
         } else {
-            echo "//" . $columnDisplay . " \n";
+            echo "/*" . $columnDisplay . " */\n";
         }
     }
 }
@@ -97,15 +122,16 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
                 'class' => 'yii\grid\ActionColumn',
             ],
         ],
-        'responsive'=>true,
-        'hover'=>true,
-        'condensed'=>true,
-        'floatHeader'=>true,
+        'responsive' => true,
+        'hover' => true,
+        'condensed' => true,
+        'floatHeader' => true,
         'panel' => [
-            'heading'=>'<h3 class="panel-title"><i class="glyphicon glyphicon-th-list"></i> '.Html::encode($this->title).' </h3>',
-            'type'=>'info',
-            'before'=>Html::a('<i class="glyphicon glyphicon-plus"></i> Add', ['create'], ['class' => 'btn btn-success']),                                                                                                                                                          'after'=>Html::a('<i class="glyphicon glyphicon-repeat"></i> Reset List', ['index'], ['class' => 'btn btn-info']),
-            'showFooter'=>false
+            'heading' => '<h3 class="panel-title"><i class="glyphicon glyphicon-th-list"></i> ' . Html::encode($this->title) . ' </h3>',
+            'type' => 'info',
+            'before' => Html::a('<i class="glyphicon glyphicon-plus"></i> Add', ['create'], ['class' => 'btn btn-success']),
+            'after' => Html::a('<i class="glyphicon glyphicon-repeat"></i> Reset List', ['index'], ['class' => 'btn btn-info']),
+            'showFooter' => false
         ],
     ]); Pjax::end(); ?>
 <?php else: ?>
