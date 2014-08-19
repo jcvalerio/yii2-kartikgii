@@ -15,7 +15,7 @@ use yii\db\Schema;
 use yii\gii\CodeFile;
 use yii\helpers\Inflector;
 use yii\web\Controller;
-use apptitude\helpers\UtilHelper;
+use jcvalerio\kartikgii\crud\helpers\UtilHelper;
 
 /**
  * Generates CRUD
@@ -750,7 +750,7 @@ class Generator extends \yii\gii\generators\crud\Generator
     {
         $prompt = '';
         if ($column->allowNull && $column->defaultValue == NULL) {
-            $prompt = "'prompt' => 'None', ";
+            $prompt = "'prompt' => Yii::t('app', 'None'), ";
         }
         return "'$attribute' => ['type' => Form::INPUT_DROPDOWN_LIST, 'items' => " . $this->commonModelNamespace . "\\" .
             $foreignKey[0] . "::getKeyValuePairs(), 'options' => [" .
