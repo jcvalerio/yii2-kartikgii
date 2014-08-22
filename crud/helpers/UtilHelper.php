@@ -1,9 +1,9 @@
 <?php
 
 /**
- * @link http://www.apptitudetechnologies.com/
- * @copyright Copyright (c) 2014 APPtitude Technologies
- * @license http://www.apptitudetechnologies.com/license/
+ * @link http://www.appttitude.com/
+ * @copyright Copyright (c) 2014 APPttitude
+ * @license http://www.appttitude.com/license/
  */
 
 namespace jcvalerio\kartikgii\crud\helpers;
