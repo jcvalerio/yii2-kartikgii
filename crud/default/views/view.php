@@ -110,6 +110,13 @@ if (($tableSchema = $generator->getTableSchema()) === false) {
                     'type'=>DetailView::INPUT_SWITCH
                 ],\n";
 
+            }elseif(\appttitude\helpers\UtilHelper::endsWith($column->name, 'ImagePath')){
+                echo "            [
+                    'attribute' => '$column->name',
+                    $displayOnly
+                    'format' => 'raw',
+                    'value' => \kartik\helpers\Html::img(\appttitude\helpers\UtilHelper::getUploadImageUrl(\$model->$column->name)),
+                ],\n";
             } else{
                 echo "            ['attribute' => '" . $column->name ."'". ($format === 'text' ? "" : ", 'format' => '" . $format . "'") . ", " . $displayOnly . "],\n";
             }
