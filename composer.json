@@ -19,6 +19,7 @@
         "kartik-v/yii2-grid": "*",
         "kartik-v/yii2-icons": "*",
         "kartik-v/yii2-datecontrol": "*",
+        "kartik-v/yii2-field-range": "*",
         "kartik-v/yii2-helpers": "*",
         "kartik-v/yii2-builder": "*",
         "kartik-v/yii2-detail-view": "*",
